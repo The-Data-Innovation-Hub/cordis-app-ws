@@ -1,11 +1,20 @@
 export const APP_VERSION = {
-  "frontend": "0.4.3",
+  "frontend": "0.5.0",
   "database": "0.1.0",
   "lastUpdated": "2025-05-19"
 };
 
 export const VERSION_HISTORY = {
   "frontend": [
+    {
+      "version": "0.5.0",
+      "date": "2025-05-19",
+      "changes": [
+        "Added admin user system",
+        "Created admin dashboard",
+        "Added make-admin script"
+      ]
+    },
     {
       "version": "0.4.3",
       "date": "2025-05-19",
