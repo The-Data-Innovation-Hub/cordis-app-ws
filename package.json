@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint"
+    "lint": "next lint",
+    "update-version": "ts-node scripts/update-version.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
@@ -35,6 +36,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
+    "date-fns": "^4.1.0",
     "eslint": "^8",
     "eslint-config-next": "14.1.0",
     "eslint-config-prettier": "^9.0.0",
@@ -45,6 +47,7 @@
     "prettier": "^3.0.0",
     "prettier-plugin-tailwindcss": "^0.5.0",
     "tailwindcss": "^3.3.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   },
   "lint-staged": {
