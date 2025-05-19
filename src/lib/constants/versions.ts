@@ -1,11 +1,18 @@
 export const APP_VERSION = {
-  "frontend": "0.4.1",
+  "frontend": "0.4.2",
   "database": "0.1.0",
   "lastUpdated": "2025-05-19"
 };
 
 export const VERSION_HISTORY = {
   "frontend": [
+    {
+      "version": "0.4.2",
+      "date": "2025-05-19",
+      "changes": [
+        "Fixed NeumorphicLink component import path"
+      ]
+    },
     {
       "version": "0.4.1",
       "date": "2025-05-19",
