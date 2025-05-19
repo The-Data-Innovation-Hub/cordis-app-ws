@@ -1,11 +1,20 @@
 export const APP_VERSION = {
-  "frontend": "0.3.0",
+  "frontend": "0.4.0",
   "database": "0.1.0",
   "lastUpdated": "2025-05-19"
 };
 
 export const VERSION_HISTORY = {
   "frontend": [
+    {
+      "version": "0.4.0",
+      "date": "2025-05-19",
+      "changes": [
+        "Added dedicated sign-up and login pages",
+        "Created NeumorphicLink component",
+        "Improved auth UI styling with custom CSS"
+      ]
+    },
     {
       "version": "0.3.0",
       "date": "2025-05-19",
