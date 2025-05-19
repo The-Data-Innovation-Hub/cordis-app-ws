@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { Settings, Lock, Bell, Shield, Eye, EyeOff } from 'lucide-react';
+import { Settings, Lock, Bell, Shield, Eye, EyeOff, Info } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { VersionInfo } from '@/components/version/VersionInfo';
 
 interface PasswordFormData {
   currentPassword: string;
@@ -67,6 +68,15 @@ export default function SettingsPage() {
             <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
             <p className="text-gray-600">Manage your account settings and preferences</p>
           </div>
+        </div>
+
+        {/* Version Information Section */}
+        <div className="p-6 rounded-2xl shadow-[8px_8px_16px_#d9d9d9,-8px_-8px_16px_#ffffff] bg-white">
+          <div className="flex items-center space-x-3 mb-6">
+            <Info className="w-5 h-5 text-[#0089AD]" />
+            <h2 className="text-lg font-semibold text-gray-900">System Information</h2>
+          </div>
+          <VersionInfo />
         </div>
 
         {/* Password Section */}
