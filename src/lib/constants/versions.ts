@@ -1,11 +1,18 @@
 export const APP_VERSION = {
-  "frontend": "0.4.2",
+  "frontend": "0.4.3",
   "database": "0.1.0",
   "lastUpdated": "2025-05-19"
 };
 
 export const VERSION_HISTORY = {
   "frontend": [
+    {
+      "version": "0.4.3",
+      "date": "2025-05-19",
+      "changes": [
+        "Fixed AuthProvider context by moving it to root layout"
+      ]
+    },
     {
       "version": "0.4.2",
       "date": "2025-05-19",
