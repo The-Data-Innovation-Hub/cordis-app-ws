@@ -1,11 +1,20 @@
 export const APP_VERSION = {
-  "frontend": "0.2.0",
+  "frontend": "0.3.0",
   "database": "0.1.0",
   "lastUpdated": "2025-05-19"
 };
 
 export const VERSION_HISTORY = {
   "frontend": [
+    {
+      "version": "0.3.0",
+      "date": "2025-05-19",
+      "changes": [
+        "Implemented global session management with AuthProvider",
+        "Simplified SupabaseAuth component",
+        "Added automatic sign-in state handling"
+      ]
+    },
     {
       "version": "0.2.0",
       "date": "2025-05-19",
