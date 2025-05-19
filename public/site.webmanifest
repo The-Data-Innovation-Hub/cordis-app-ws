@@ -1,0 +1,21 @@
+{
+  "name": "Cordis Brand Management",
+  "short_name": "Cordis",
+  "description": "Modern brand management platform for the digital age",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0089AD",
+  "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 191 100% 34%; /* #0089AD */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 0%; /* #000000 */
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --border: 240 5.9% 90%;
+    --destructive-foreground: 0 0% 98%;
+    --input: 240 5.9% 90%;
+    --ring: 191 100% 34%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 191 100% 34%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 0%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 191 100% 34%;
+  }
+  
+  * {
+    border-color: hsl(var(--border));
+  }
+  
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: hsl(0, 0%, 96%);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background-color: hsl(240, 10%, 3.9%);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 137, 173, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 137, 173, 0.5);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+/* Neumorphic Card */
+.neumorph-card {
+  border-radius: 1rem;
+  padding: 1.5rem;
+  background-color: hsl(0, 0%, 100%);
+  box-shadow: 8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff;
+  transition: all 0.3s ease;
+}
+
+.dark .neumorph-card {
+  background-color: hsl(240, 10%, 3.9%);
+  box-shadow: 8px 8px 16px #0a0a0a, -8px -8px 16px #1a1a1a;
+}
+
+.neumorph-card:hover {
+  box-shadow: 12px 12px 24px #c7cfd6, -12px -12px 24px #ffffff;
+}
+
+.dark .neumorph-card:hover {
+  box-shadow: 12px 12px 24px #0a0a0a, -12px -12px 24px #1a1a1a;
+}
+
+/* Button Styles */
+.btn-primary {
+  padding: 0.625rem 1.5rem;
+  background-color: hsl(191, 100%, 34%);
+  color: white;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-primary:focus {
+  box-shadow: 0 0 0 2px rgba(0, 137, 173, 0.5);
+}
+
+.btn-primary:active {
+  transform: scale(0.95);
+}
+
+.btn-secondary {
+  padding: 0.625rem 1.5rem;
+  background-color: hsl(0, 0%, 0%);
+  color: white;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.btn-secondary:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary:focus {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+.btn-secondary:active {
+  transform: scale(0.95);
+}
+
+/* Form Elements */
+.input-field {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(240, 5.9%, 90%);
+  background-color: white;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.dark .input-field {
+  border-color: hsl(240, 3.7%, 15.9%);
+  background-color: hsl(240, 3.7%, 15.9%);
+  color: white;
+}
+
+.input-field:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px rgba(0, 137, 173, 0.5);
+}
