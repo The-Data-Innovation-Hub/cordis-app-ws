@@ -15,10 +15,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange
       >
         <ToastProviderWrapper>
-          <Navbar />
-          <main className="flex-1">
-            {children}
-          </main>
+          <div className="flex flex-col min-h-screen">
+            <Navbar />
+            <main className="flex-1 container mx-auto px-4 py-8">
+              {children}
+            </main>
+          </div>
         </ToastProviderWrapper>
       </ThemeProvider>
     </AuthProvider>

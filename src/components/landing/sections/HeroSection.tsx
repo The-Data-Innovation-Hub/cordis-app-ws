@@ -1,4 +1,4 @@
-import { NeumorphicButton } from '../ui/NeumorphicButton';
+import { NeumorphicLink } from '../ui/NeumorphicLink';
 import { ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -45,28 +45,22 @@ export function HeroSection() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <NeumorphicButton 
+              <NeumorphicLink 
                 variant="primary" 
                 className="group flex items-center gap-2 px-8 py-4 text-lg"
-                onClick={() => {
-                  const authSection = document.getElementById('auth-section');
-                  authSection?.scrollIntoView({ behavior: 'smooth' });
-                }}
+                href="/auth/sign-in"
               >
                 Sign In
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </NeumorphicButton>
+              </NeumorphicLink>
               
-              <NeumorphicButton 
+              <NeumorphicLink 
                 variant="outline" 
                 className="group flex items-center gap-2 px-8 py-4 text-lg"
-                onClick={() => {
-                  const waitlistSection = document.getElementById('waitlist-section');
-                  waitlistSection?.scrollIntoView({ behavior: 'smooth' });
-                }}
+                href="/auth/signup"
               >
-                Join Waitlist
-              </NeumorphicButton>
+                Sign Up
+              </NeumorphicLink>
             </div>
           </motion.div>
         </div>

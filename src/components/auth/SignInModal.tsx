@@ -1,48 +1,81 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-context';
+import { Checkbox } from '@/components/ui/checkbox';
+
 
 export function SignInModal() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const { toast } = useToast();
   const { signIn } = useAuth();
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     
+    if (!email || !password) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please enter both email and password.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (password.length < 8) {
+      toast({
+        title: 'Invalid Password',
+        description: 'Password must be at least 8 characters long.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      const { error } = await signIn(email, password);
+      const response = await signIn(email, password);
+
+      if (!response) {
+        // Sign in failed
+        setIsLoading(false);
+        return;
+      }
       
-      if (error) throw error;
-      
+      // Sign in successful
       toast({
         title: 'Success',
-        description: 'Successfully signed in!',
-        variant: 'success' as const,
+        description: 'Successfully signed in! Redirecting...',
+        variant: 'default',
       });
       
+      // Reset loading state and close modal immediately
+      setIsLoading(false);
       setOpen(false);
-      router.refresh();
+      
+      // Add a small delay and use direct location change to ensure session propagation
+      setTimeout(() => {
+        // Use absolute URL to ensure proper navigation
+        const baseUrl = window.location.origin;
+        window.location.href = `${baseUrl}${redirectTo.startsWith('/') ? redirectTo : `/${redirectTo}`}`;
+      }, 500);
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to sign in. Please try again.',
-        variant: 'error' as const,
-      });
-    } finally {
+      // Error is already handled by auth context with toast
+      console.error('Sign in error:', error);
       setIsLoading(false);
     }
   };
@@ -59,7 +92,14 @@ export function SignInModal() {
                    active:shadow-[inset_3px_3px_6px_#e2e8f0,inset_-3px_-3px_6px_#ffffff]
                    dark:active:shadow-[inset_3px_3px_6px_#0f172a,inset_-3px_-3px_6px_#1e293b]"
         >
-          Sign In
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Signing in...
+            </span>
+          ) : (
+            'Sign In'
+          )}
         </Button>
       </Dialog.Trigger>
       
@@ -95,19 +135,13 @@ export function SignInModal() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="signin-password">Password</Label>
-                <button
-                  type="button"
-                  className="text-sm text-primary hover:underline"
-                  onClick={() => {
-                    toast({
-                      title: 'Password Reset',
-                      description: 'Check your email for a password reset link.',
-                      variant: 'info' as const,
-                    });
-                  }}
+                <Link
+                  href="/auth/reset-password"
+                  onClick={() => setOpen(false)}
+                  className="text-sm text-[#0089AD] hover:text-[#0089AD]/80"
                 >
                   Forgot password?
-                </button>
+                </Link>
               </div>
               <Input
                 id="signin-password"
@@ -120,12 +154,35 @@ export function SignInModal() {
               />
             </div>
             
+            <div className="flex items-center mt-4">
+              <Checkbox
+                id="remember-me"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                className="text-[#0089AD] focus:ring-[#0089AD]"
+              />
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                Remember me
+              </label>
+            </div>
+            
             <Button 
               type="submit" 
-              className="w-full mt-6"
+              className="w-full mt-6 px-4 py-3 text-base font-semibold rounded-lg transition-all duration-200
+                bg-[#0089AD] hover:bg-[#0089AD]/90 text-white
+                hover:shadow-[4px_4px_8px_#006f8b,-4px_-4px_8px_#00a3cf]
+                active:shadow-[inset_3px_3px_6px_#006f8b,inset_-3px_-3px_6px_#00a3cf]
+                disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? (
+                <span className="flex items-center justify-center">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </span>
+              ) : (
+                'Sign In'
+              )}
             </Button>
             
             <p className="text-sm text-center text-gray-600 dark:text-gray-400">

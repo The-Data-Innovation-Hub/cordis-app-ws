@@ -1,121 +1,170 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useAuth } from '@/contexts/auth-context';
-import { useForm } from 'react-hook-form';
-import { motion } from 'framer-motion';
-import { KeyRound } from 'lucide-react';
-
-interface ResetPasswordFormData {
-  email: string;
-}
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 export default function ResetPasswordPage() {
-  const { resetPassword, isLoading } = useAuth();
-  const [error, setError] = useState<string>('');
-  const [success, setSuccess] = useState(false);
-  
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<ResetPasswordFormData>();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [isValidLink, setIsValidLink] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const type = searchParams.get('type');
 
-  const onSubmit = async (data: ResetPasswordFormData) => {
-    setError('');
-    setSuccess(false);
-    const { error } = await resetPassword(data.email);
-    if (error) {
-      setError(error.message);
-    } else {
-      setSuccess(true);
+  useEffect(() => {
+    // Check if this is a password recovery request
+    if (type === 'recovery') {
+      // The token is already in the URL, we can proceed
+      setIsValidLink(true);
+    }
+  }, [type]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+
+      // Update the user's password using the token from the URL
+      const { error: resetError } = await supabase.auth.updateUser({
+        password: password,
+      });
+
+      if (resetError) throw resetError;
+      
+      toast.success('Password updated successfully!');
+      router.push('/auth/login');
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      setError(error.message || 'Failed to reset password');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md p-8 rounded-2xl shadow-[8px_8px_16px_#d9d9d9,-8px_-8px_16px_#ffffff] bg-white"
-      >
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 bg-[#0089AD] rounded-full flex items-center justify-center mb-4 shadow-[inset_4px_4px_8px_rgba(0,0,0,0.1),inset_-4px_-4px_8px_rgba(255,255,255,0.1)]">
-            <KeyRound className="w-6 h-6 text-white" />
+  if (!isValidLink) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
+          <div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+              Invalid or expired link
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              The password reset link is invalid or has expired. Please request a new one.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Reset Password</h1>
-          <p className="text-gray-600 mt-2 text-center">
-            Enter your email address and we'll send you a link to reset your password
+          <div className="mt-6">
+            <a
+              href="/auth/forgot-password"
+              className="group relative flex w-full justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            >
+              Request new reset link
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Reset your password
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Enter your new password below.
           </p>
         </div>
-
+        
         {error && (
-          <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-600 text-sm">
-            {error}
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">{error}</h3>
+              </div>
+            </div>
           </div>
         )}
-
-        {success ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center"
-          >
-            <div className="mb-4 p-4 rounded bg-green-50 border border-green-200 text-green-700">
-              Check your email for the reset link
-            </div>
-            <Link
-              href="/auth/sign-in"
-              className="text-[#0089AD] hover:text-[#006d8a] font-medium transition-colors"
-            >
-              Back to Sign In
-            </Link>
-          </motion.div>
-        ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="space-y-4 rounded-md">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                New Password
               </label>
               <input
-                {...register('email', {
-                  required: 'Email is required',
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: 'Invalid email address',
-                  },
-                })}
-                type="email"
-                className="w-full px-4 py-3 rounded-lg bg-white shadow-[inset_4px_4px_8px_#d9d9d9,inset_-4px_-4px_8px_#ffffff] border border-gray-100 focus:outline-none focus:ring-2 focus:ring-[#0089AD] focus:border-transparent transition-shadow"
-                placeholder="Enter your email"
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-primary-500 focus:outline-none focus:ring-primary-500 sm:text-sm"
+                placeholder="••••••••"
               />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-              )}
             </div>
+            <div>
+              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
+                Confirm New Password
+              </label>
+              <input
+                id="confirm-password"
+                name="confirm-password"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-primary-500 focus:outline-none focus:ring-primary-500 sm:text-sm"
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
 
+          <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 rounded-lg bg-[#0089AD] text-white font-medium shadow-[4px_4px_8px_#d9d9d9,-4px_-4px_8px_#ffffff] hover:bg-[#006d8a] focus:outline-none focus:ring-2 focus:ring-[#0089AD] focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]"
+              className={`group relative flex w-full justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              {isLoading ? 'Sending...' : 'Send Reset Link'}
+              {isLoading ? 'Updating...' : 'Reset Password'}
             </button>
-
-            <p className="text-center text-sm text-gray-600">
-              Remember your password?{' '}
-              <Link
-                href="/auth/sign-in"
-                className="text-[#0089AD] hover:text-[#006d8a] font-medium transition-colors"
-              >
-                Sign in
-              </Link>
-            </p>
-          </form>
-        )}
-      </motion.div>
+          </div>
+        </form>
+        
+        <div className="text-center text-sm">
+          <a 
+            href="/auth/login" 
+            className="font-medium text-primary-600 hover:text-primary-500"
+          >
+            Back to sign in
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

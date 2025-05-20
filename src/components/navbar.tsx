@@ -1,19 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { SignInModal } from './auth/SignInModal';
-import { SignUpModal } from './auth/SignUpModal';
-
-const routes = [
-  {
-    name: 'Contact',
-    path: '/contact',
-  },
-];
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/auth-context';
+import { isAdmin } from '@/lib/supabase/admin';
+import { Shield } from 'lucide-react';
 
 export function Navbar() {
-  const pathname = usePathname();
+  const { session } = useAuth();
+  const [isAdminUser, setIsAdminUser] = useState(false);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (session) {
+        const adminStatus = await isAdmin();
+        setIsAdminUser(adminStatus);
+      }
+    };
+
+    checkAdminStatus();
+  }, [session]);
 
   return (
     <header className="border-b border-gray-200 dark:border-gray-800">
@@ -25,24 +31,18 @@ export function Navbar() {
             className="h-8 w-auto"
           />
         </Link>
-        <nav className="flex items-center space-x-4">
-          {routes.map((route) => (
+        <nav className="flex items-center gap-4">
+          {/* Navigation links moved to sidebar */}
+          {isAdminUser && (
             <Link
-              key={route.path}
-              href={route.path}
-              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                pathname === route.path
-                  ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white'
-                  : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-              }`}
+              href="/admin"
+              className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground/80 transition-colors"
             >
-              {route.name}
+              <Shield className="h-4 w-4" />
+              Admin
             </Link>
-          ))}
-          <div className="flex items-center space-x-2">
-            <SignInModal />
-            <SignUpModal />
-          </div>
+          )}
+          {/* Authentication handled by the protected layout */}
         </nav>
       </div>
     </header>

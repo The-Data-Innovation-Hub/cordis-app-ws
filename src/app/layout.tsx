@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Providers } from './providers';
-import { DevBanner } from '@/components/dev/DevBanner';
-import { DevErrorBoundary } from '@/components/dev/DevErrorBoundary';
+import { Toaster } from 'sonner';
+import { cn } from '@/lib/utils';
+
 import './globals.css';
 
 const inter = Inter({
@@ -10,47 +11,50 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: 'white' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   title: {
-    default: 'Cordis Brand Management',
+    default: 'Cordis',
     template: '%s | Cordis',
   },
-  description: 'Modern brand management platform for the digital age',
+  description:
+    'A modern web application for data management and visualization.',
   keywords: [
-    'brand management',
-    'digital assets',
-    'marketing',
-    'brand guidelines',
-    'design system',
+    'data',
+    'management',
+    'visualization',
+    'analytics',
+    'dashboard',
   ],
   authors: [
     {
-      name: 'Cordis Team',
-      url: 'https://cordis.example.com',
+      name: 'Cordis',
+      url: 'https://cordis.app',
     },
   ],
   creator: 'Cordis',
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://cordis.example.com',
-    title: 'Cordis Brand Management',
-    description: 'Modern brand management platform for the digital age',
+    url: 'https://cordis.app',
+    title: 'Cordis',
+    description: 'A modern web application for data management and visualization.',
     siteName: 'Cordis',
-    images: [
-      {
-        url: '/og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Cordis Brand Management',
-      },
-    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Cordis Brand Management',
-    description: 'Modern brand management platform for the digital age',
-    images: ['/og-image.jpg'],
+    title: 'Cordis',
+    description: 'A modern web application for data management and visualization.',
     creator: '@cordis',
   },
   icons: {
@@ -61,68 +65,23 @@ export const metadata: Metadata = {
   manifest: '/site.webmanifest',
 };
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
-  ],
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
+
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className={`${inter.variable} font-sans`} suppressHydrationWarning>
-      <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-      </head>
-      <body className="min-h-screen bg-white font-sans antialiased dark:bg-gray-950">
+    <html lang="en" suppressHydrationWarning>
+      <head />
+      <body
+        className={cn('min-h-screen bg-background font-sans antialiased', inter.variable)}
+        suppressHydrationWarning
+      >
         <Providers>
-          <DevErrorBoundary>
-            <DevBanner />
-            {children}
-            <footer className="border-t border-gray-200 py-6 dark:border-gray-800 mt-auto">
-              <div className="container flex flex-col items-center justify-between gap-4 md:flex-row">
-                <p className="text-center text-sm text-gray-500 dark:text-gray-400 md:text-left">
-                  &copy; {new Date().getFullYear()} Cordis. All rights reserved.
-                </p>
-                <div className="flex items-center space-x-4">
-                  <a
-                    href="#"
-                    className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  >
-                    Terms
-                  </a>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  >
-                    Privacy
-                  </a>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  >
-                    Contact
-                  </a>
-                  {process.env.NODE_ENV !== 'production' && (
-                    <a
-                      href="/dev"
-                      className="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                    >
-                      Dev Tools
-                    </a>
-                  )}
-                </div>
-              </div>
-            </footer>
-          </DevErrorBoundary>
+          {children}
+          <Toaster richColors position="top-right" />
         </Providers>
       </body>
     </html>
