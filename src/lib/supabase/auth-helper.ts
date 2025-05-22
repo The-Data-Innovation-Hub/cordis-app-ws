@@ -1,18 +1,12 @@
 /**
  * Enhanced authentication helper for Supabase
- * This provides direct methods to authenticate with test users
+ * This provides direct methods to authenticate
  * with improved error handling for local development
  */
 
 import { supabase } from './client';
 import { isProfileData, type AuthResponse } from '@/types/supabase';
 import { toast } from 'sonner';
-
-// Test users for easy access
-export const TEST_USERS = {
-  admin: { email: 'admin@example.com', password: 'password', role: 'admin' },
-  user: { email: 'test@example.com', password: 'password', role: 'user' },
-};
 
 /**
  * Check for and restore a manual session if one exists
@@ -418,8 +412,7 @@ if (typeof window !== 'undefined') {
     signUpWithEmail,
     signOut,
     checkAuthState,
-    checkAndRestoreManualSession,
-    TEST_USERS
+    checkAndRestoreManualSession
   };
   
   console.log('Auth helper functions available in window.authHelper');
