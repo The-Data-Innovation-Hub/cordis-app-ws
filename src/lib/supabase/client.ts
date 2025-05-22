@@ -21,10 +21,10 @@ export const supabase = createSupabaseClient<Database>(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,
-      debug: true,
-      flowType: 'pkce',
-      storageKey: 'sb-' + supabaseUrl.split('//')[1].split('.')[0] + '-auth-token',
+      detectSessionInUrl: true,
+      debug: process.env.NODE_ENV === 'development',
+      flowType: 'implicit', // Changed from pkce to implicit for local development
+      storageKey: 'cordis-auth-token',
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     },
     global: {
@@ -35,6 +35,8 @@ export const supabase = createSupabaseClient<Database>(
     db: {
       schema: 'public',
     },
+    // Add more detailed logging for development
+    debug: process.env.NODE_ENV === 'development',
   }
 );
 

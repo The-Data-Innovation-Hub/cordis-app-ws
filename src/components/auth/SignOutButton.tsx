@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 interface SignOutButtonProps {
   variant?: 'default' | 'minimal';
@@ -12,14 +12,16 @@ interface SignOutButtonProps {
 }
 
 export function SignOutButton({ variant = 'default', className = '' }: SignOutButtonProps) {
-  const router = useRouter();
   const { signOut, isLoading } = useAuth();
   const [showConfirm, setShowConfirm] = useState(false);
 
   const handleSignOut = async () => {
-    const { error } = await signOut();
-    if (!error) {
-      router.push('/auth/sign-in');
+    try {
+      await signOut();
+      // The signOut function already handles the redirect
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Failed to sign out. Please try again.');
     }
   };
 

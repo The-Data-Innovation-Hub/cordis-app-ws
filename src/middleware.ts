@@ -12,7 +12,7 @@ const protectedRoutes = [
 // Routes that are only accessible to non-authenticated users
 const authRoutes = [
   '/auth/login',
-  '/auth/signup',
+  '/auth/sign-up',
   '/auth/forgot-password',
   '/auth/reset-password',
 ];
@@ -26,7 +26,8 @@ const isExcludedRoute = (path: string) =>
   path.startsWith('/dashboard') || 
   path.startsWith('/admin/dashboard') || 
   path.startsWith('/manager/dashboard') || 
-  path.startsWith('/router');
+  path.startsWith('/router') ||
+  path.startsWith('/settings');
 
 // Check if the route is an auth route
 const isAuthRoute = (path: string) =>

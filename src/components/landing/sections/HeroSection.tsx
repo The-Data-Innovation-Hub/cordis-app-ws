@@ -6,6 +6,18 @@ import { motion } from 'framer-motion';
 export function HeroSection() {
   return (
     <section className="relative overflow-hidden py-20 md:py-32 bg-white dark:bg-gray-900">
+      {/* Top Sign In Button */}
+      <div className="absolute top-6 right-6 z-10">
+        <NeumorphicLink 
+          variant="primary" 
+          className="group flex items-center gap-2 px-6 py-3 text-base"
+          href="/auth/login"
+        >
+          Sign In
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+        </NeumorphicLink>
+      </div>
+      
       <div className="container mx-auto px-4">
         <div className="max-w-5xl mx-auto text-center">
           {/* Hero Image - Moved to top */}
@@ -48,7 +60,7 @@ export function HeroSection() {
               <NeumorphicLink 
                 variant="primary" 
                 className="group flex items-center gap-2 px-8 py-4 text-lg"
-                href="/auth/sign-in"
+                href="/auth/login"
               >
                 Sign In
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -57,7 +69,7 @@ export function HeroSection() {
               <NeumorphicLink 
                 variant="outline" 
                 className="group flex items-center gap-2 px-8 py-4 text-lg"
-                href="/auth/signup"
+                href="/auth/sign-up"
               >
                 Sign Up
               </NeumorphicLink>

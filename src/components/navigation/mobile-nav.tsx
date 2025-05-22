@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Home, Users, FileText, BarChart, Settings, Folder, Shield } from 'lucide-react';
+import { Menu, X, Home, Users, Settings, Shield } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 
 interface NavItem {
@@ -44,21 +44,6 @@ export function MobileNav() {
       icon: <Home className="h-5 w-5" />,
     },
     {
-      name: 'Projects',
-      href: '/projects',
-      icon: <Folder className="h-5 w-5" />,
-    },
-    {
-      name: 'Reports',
-      href: '/reports',
-      icon: <FileText className="h-5 w-5" />,
-    },
-    {
-      name: 'Analytics',
-      href: '/analytics',
-      icon: <BarChart className="h-5 w-5" />,
-    },
-    {
       name: 'Team',
       href: '/team',
       icon: <Users className="h-5 w-5" />,
@@ -72,8 +57,15 @@ export function MobileNav() {
     },
     {
       name: 'Settings',
+      href: '/admin/settings',
+      icon: <Settings className="h-5 w-5" />,
+      roles: ['admin'],
+    },
+    {
+      name: 'User Settings',
       href: '/settings',
       icon: <Settings className="h-5 w-5" />,
+      roles: ['user'],
     },
   ];
 
@@ -124,16 +116,19 @@ export function MobileNav() {
                   </button>
                 </div>
                 {profile && (
-                  <div className="pt-2 border-t border-gray-100 mt-2">
+                  <div className="pt-3 border-t border-gray-100 mt-2 p-3 rounded-lg shadow-[inset_4px_4px_8px_rgba(0,0,0,0.05),inset_-4px_-4px_8px_rgba(255,255,255,0.1)]">
                     <p className="font-medium text-gray-900">
                       Welcome back,{' '}
-                      <span className="text-[#0089AD]">
+                      <span className="text-[#0089AD] font-semibold">
                         {profile.full_name 
                           ? profile.full_name.split(' ')[0] 
-                          : profile.email.split('@')[0]}
+                          : profile.email?.split('@')[0] || 'User'}
                       </span>
                     </p>
-                    <p className="text-xs text-gray-500 capitalize">{profile.role}</p>
+                    <div className="flex items-center mt-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-[#0089AD] mr-2"></span>
+                      <p className="text-xs text-gray-600 capitalize font-medium">{profile.role || 'user'}</p>
+                    </div>
                   </div>
                 )}
               </div>

@@ -55,8 +55,8 @@ const PieChartComponent = ({ data }: { data: typeof taskCompletionData }) => {
   let startAngle = 0;
   
   return (
-    <div className="relative h-64 flex items-center justify-center mt-4">
-      <svg width="200" height="200" viewBox="0 0 100 100">
+    <div className="relative h-64 flex items-center justify-between mt-4 px-4">
+      <svg width="160" height="160" viewBox="0 0 100 100" className="flex-shrink-0">
         {data.map((item, index) => {
           const percentage = (item.value / total) * 100;
           const angle = (percentage / 100) * 360;
@@ -99,12 +99,18 @@ const PieChartComponent = ({ data }: { data: typeof taskCompletionData }) => {
       </svg>
       
       {/* Legend */}
-      <div className="absolute right-0 top-1/2 transform translate-x-full -translate-y-1/2 space-y-2">
+      <div className="flex flex-col justify-center space-y-2 ml-4">
         {data.map((item, index) => (
-          <div key={index} className="flex items-center text-xs">
+          <motion.div
+            key={index}
+            className="flex items-center text-xs"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+          >
             <div className="w-3 h-3 mr-2" style={{ backgroundColor: item.color }}></div>
             <span>{item.name}: {item.value}</span>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>

@@ -24,6 +24,9 @@
     --input: 240 5.9% 90%;
     --ring: 191 100% 34%;
     --radius: 0.5rem;
+    --neumorph-bg: 0 0% 100%;
+    --neumorph-shadow-light: 0 0% 82%;
+    --neumorph-shadow-dark: 0 0% 100%;
   }
 
   .dark {
@@ -46,6 +49,9 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 191 100% 34%;
+    --neumorph-bg: 240 10% 3.9%;
+    --neumorph-shadow-light: 240 10% 4.1%;
+    --neumorph-shadow-dark: 240 10% 10.4%;
   }
   
   * {

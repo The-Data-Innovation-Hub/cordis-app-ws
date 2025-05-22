@@ -1,213 +1,176 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+
+// Helper function to safely handle navigation
+const safeNavigate = (path: string) => {
+  try {
+    if (typeof window !== 'undefined' && window.location.pathname !== path) {
+      console.log(`Navigating to: ${path}`);
+      window.location.href = path;
+    }
+  } catch (error) {
+    console.error('Navigation error:', error);
+  }
+};
+
+// Determines the target dashboard URL based on user role
+const getDashboardByRole = (role: string | null) => {
+  if (!role) return { path: '/dashboard', displayRole: 'User' };
+  
+  const normalizedRole = role.toLowerCase().trim();
+  console.log(`Normalized role: "${normalizedRole}"`);
+  
+  switch (normalizedRole) {
+    case 'admin':
+      return { path: '/admin/dashboard', displayRole: 'Administrator' };
+    case 'manager':
+      return { path: '/manager/dashboard', displayRole: 'Manager' };
+    default:
+      return { path: '/dashboard', displayRole: 'User' };
+  }
+};
+
+// Loading spinner component
+const LoadingSpinner = () => (
+  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+);
+
+// Status icon component
+const StatusIcon = ({ status }: { status: 'loading' | 'success' | 'error' }) => {
+  if (status === 'loading') return <LoadingSpinner />;
+  if (status === 'success') return <div className="text-green-500 text-4xl mb-2">✓</div>;
+  return <div className="text-red-500 text-4xl mb-2">⚠️</div>;
+};
+
+// Status message component
+const StatusMessage = ({ status }: { status: 'loading' | 'success' | 'error' }) => {
+  if (status === 'loading') return 'Please wait...';
+  if (status === 'success') return 'Taking you to your dashboard...';
+  return 'Redirecting to login...';
+};
 
 /**
  * Role-Based Router Page
  * 
- * This is a dedicated page that handles authentication and role-based routing
- * with a direct approach using window.location rather than Next.js routing.
- * 
- * The flow is:
- * 1. Check if user is authenticated
- * 2. Fetch their profile to determine role
- * 3. Navigate to the appropriate dashboard
+ * Handles authentication and role-based routing for the application.
+ * Ensures users are properly authenticated and routes them to the appropriate dashboard.
  */
 export default function RouterPage() {
-  // State to show user-friendly status messages
   const [message, setMessage] = useState('Checking your account...');
-  // State to track what animation to show
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [hasRedirected, setHasRedirected] = useState(false);
 
-  useEffect(() => {
-    // Self-executing async function to handle routing
-    (async () => {
-      try {
-        // STEP 1: Check authentication
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          // Not authenticated, redirect to login
-          console.log('Router: No active session found');
-          setStatus('error');
-          setMessage('Please log in to continue');
-          toast.error('Authentication required');
-          
-          setTimeout(() => {
-            window.location.href = '/auth/login';
-          }, 1000);
-          return;
-        }
-        
-        // STEP 2: Get user profile for role information
-        setMessage('Loading your profile...');
-        // First verify we still have a valid session token
-        console.log('ROUTER - Verifying token validity');
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        
-        if (!currentUser || currentUser.id !== session.user.id) {
-          console.error('ROUTER - User ID mismatch or token invalid');
-          setStatus('error');
-          setMessage('Authentication error');
-          toast.error('Authentication error', { description: 'Please log in again' });
-          setTimeout(() => { window.location.href = '/auth/login'; }, 2000);
-          return;
-        }
-        
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('role, email, full_name')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (error || !profile) {
-          console.error('Router: Error fetching profile', error);
-          setStatus('error');
-          setMessage('Unable to load your profile');
-          
-          toast.error('Profile error', { 
-            description: 'Redirecting to default dashboard' 
-          });
-          
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 1500);
-          return;
-        }
-        
-        // STEP 3: Determine dashboard based on role
-        // Display full profile information for debugging
-        console.log('ROUTER - PROFILE DATA:', {
-          id: session.user.id,
-          email: profile.email,
-          role: profile.role,
-          roleType: typeof profile.role,
-          roleStringValue: String(profile.role)
-        });
-        
-        // Set defaults
-        let targetDashboard = '/dashboard';
-        let roleDisplay = 'User';
-        
-        // Normalize role to handle any data type or casing issues
-        if (profile.role !== null && profile.role !== undefined) {
-          const normalizedRole = String(profile.role).toLowerCase().trim();
-          console.log(`ROUTER - Normalized role: "${normalizedRole}"`);
-          
-          // Assign dashboard path based on role
-          if (normalizedRole === 'admin') {
-            targetDashboard = '/admin/dashboard';
-            roleDisplay = 'Administrator';
-          } else if (normalizedRole === 'manager') {
-            targetDashboard = '/manager/dashboard';
-            roleDisplay = 'Manager';
-          }
-        }
-        
-        // STEP 4: Show success animation and redirect
-        setStatus('success');
-        setMessage(`Welcome ${profile.full_name || roleDisplay}!`);
-        
-        toast.success(`Welcome back!`, {
-          description: `Redirecting to your ${roleDisplay} dashboard...`
-        });
-        
-        console.log(`ROUTER - Redirecting to: ${targetDashboard}`);
-        
-        // First, refresh token to ensure session persists
-        try {
-          console.log('ROUTER - Refreshing auth token before redirect');
-          await supabase.auth.refreshSession();
-          
-          // Verify session is still valid after refresh
-          const { data: { session: refreshedSession } } = await supabase.auth.getSession();
-          if (!refreshedSession) {
-            console.error('ROUTER - Session lost after refresh!');
-            setStatus('error');
-            setMessage('Session lost. Please log in again.');
-            toast.error('Authentication error', { description: 'Please log in again' });
-            setTimeout(() => { window.location.href = '/auth/login'; }, 2000);
-            return;
-          }
-          
-          console.log('ROUTER - Session refreshed successfully');
-        } catch (refreshError) {
-          console.warn('ROUTER - Non-fatal refresh error:', refreshError);
-        }
-        
-        // Store user role in localStorage to help with persistence
-        if (profile.role) {
-          localStorage.setItem('userRole', String(profile.role).toLowerCase().trim());
-        }
-        
-        // Set a redirection timestamp to prevent infinite loops
-        localStorage.setItem('lastRedirect', Date.now().toString());
-        
-        // Short delay to allow animation to be seen
-        setTimeout(() => {
-          console.log(`ROUTER - FINAL REDIRECT to ${targetDashboard}`);
-          // Use direct browser navigation which bypasses Next.js routing
-          // Use replace instead of href to avoid back-button issues
-          window.location.replace(targetDashboard);
-        }, 1500);
-        
-      } catch (err) {
-        // Handle any unexpected errors
-        console.error('Router: Unexpected error', err);
-        setStatus('error');
-        setMessage('Something went wrong');
-        
-        toast.error('Navigation error', { 
-          description: 'Please try again later' 
-        });
-        
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 2000);
+  // Handles the entire redirection logic
+  const handleRedirect = useCallback(async () => {
+    if (hasRedirected) {
+      console.log('Redirection already handled');
+      return;
+    }
+
+    try {
+      // STEP 1: Check authentication
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error getting session:', sessionError);
+        throw sessionError;
       }
-    })();
-  }, []);
-  
-  // Animation classes based on status
-  const iconClasses = {
-    loading: "animate-spin",
-    success: "scale-110 duration-700 text-green-500",
-    error: "scale-110 duration-700 text-red-500"
-  };
+
+      if (!session) {
+        // If no session, redirect to login
+        const currentPath = window.location.pathname;
+        const redirectUrl = currentPath === '/' ? '/auth/login' : 
+          `/auth/login?redirectedFrom=${encodeURIComponent(currentPath)}`;
+        
+        setStatus('error');
+        setMessage('No active session');
+        toast.error('Please log in to continue');
+        
+        setHasRedirected(true);
+        safeNavigate(redirectUrl);
+        return;
+      }
+      
+      // STEP 2: Verify session with a fresh token
+      setMessage('Verifying your session...');
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !currentUser) {
+        console.error('Error getting current user:', userError);
+        throw userError || new Error('No user found');
+      }
+      
+      // STEP 3: Get user profile
+      setMessage('Loading your profile...');
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role, email, full_name')
+        .eq('id', currentUser.id)
+        .single();
+      
+      if (profileError || !profile) {
+        console.error('Error fetching profile:', profileError);
+        setStatus('error');
+        setMessage('Unable to load your profile');
+        toast.error('Profile error', { description: 'Redirecting to default dashboard' });
+        
+        setHasRedirected(true);
+        safeNavigate('/dashboard');
+        return;
+      }
+      
+      // Log profile data for debugging
+      console.log('Profile data:', {
+        id: currentUser.id,
+        email: profile.email,
+        role: profile.role,
+        roleType: typeof profile.role,
+        roleStringValue: String(profile.role)
+      });
+      
+      // STEP 4: Determine dashboard based on role
+      const { path: targetDashboard, displayRole } = getDashboardByRole(profile.role);
+      
+      // STEP 5: Update UI and prepare for redirect
+      setStatus('success');
+      setMessage(`Welcome, ${profile.full_name || displayRole}!`);
+      console.log(`Redirecting to: ${targetDashboard}`);
+      
+      // Mark redirection as handled and redirect
+      setHasRedirected(true);
+      setTimeout(() => safeNavigate(targetDashboard), 1000);
+      
+    } catch (error) {
+      console.error('Router error:', error);
+      setStatus('error');
+      setMessage('An error occurred');
+      toast.error('Error', { description: 'Redirecting to login...' });
+      
+      // Redirect to login on error
+      setTimeout(() => safeNavigate('/auth/login'), 2000);
+    }
+  }, [hasRedirected]);
+
+  // Run the redirect logic on component mount
+  useEffect(() => {
+    handleRedirect();
+  }, [handleRedirect]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-      {/* Neumorphic card with soft shadows */}
-      <div className="w-full max-w-md p-8 rounded-2xl 
-                     shadow-[8px_8px_16px_#d9d9d9,-8px_-8px_16px_#ffffff] 
-                     transition-all duration-300 ease-in-out 
-                     hover:shadow-[10px_10px_20px_#d1d1d1,-10px_-10px_20px_#ffffff]
-                     bg-white text-center">
-        
-        {/* Animated icon based on status */}
-        <div className={`w-20 h-20 mx-auto mb-6 transition-all duration-300 ${iconClasses[status]}`}>
-          {status === 'loading' ? (
-            <div className="w-full h-full border-4 border-[#0089AD] border-t-transparent rounded-full"></div>
-          ) : status === 'success' ? (
-            <div className="w-full h-full flex items-center justify-center text-green-500">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-red-500">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-          )}
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center p-8 max-w-md w-full">
+        <div className="mb-4">
+          <StatusIcon status={status} />
         </div>
-        
-        {/* Status message with title */}
-        <h2 className="text-2xl font-bold text-[#0089AD] mb-3">Authentication Router</h2>
-        <p className="text-gray-700 text-lg transition-all duration-300">{message}</p>
+        <h1 className="text-xl font-semibold text-gray-800 mb-2">
+          {message}
+        </h1>
+        <p className="text-gray-600 text-sm">
+          <StatusMessage status={status} />
+        </p>
       </div>
     </div>
   );

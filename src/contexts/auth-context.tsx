@@ -12,7 +12,6 @@ type UserRole = 'admin' | 'manager' | 'user';
 interface Profile {
   id: string;
   email: string;
-  username: string | null;
   full_name: string | null;
   role: UserRole;
   avatar_url?: string | null;
@@ -253,21 +252,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
         
         const typedProfile: Profile = {
-          ...profile,
-          username: profile.username || null,
+          id: profile.id,
+          email: profile.email,
           full_name: profile.full_name || null,
-          role: (profile.role as UserRole) || 'user', // Cast to UserRole type
-          email: profile.email || '',
-          created_at: profile.created_at || new Date().toISOString(),
-          updated_at: profile.updated_at || new Date().toISOString(),
+          role: profile.role as UserRole,
+          avatar_url: profile.avatar_url || null,
+          email_confirmed_at: profile.email_confirmed_at || null,
+          created_at: profile.created_at,
+          updated_at: profile.updated_at,
         };
         
         // Debug: Log the processed profile
         console.log('Processed profile after type casting:', {
           id: typedProfile.id,
           email: typedProfile.email,
-          processedRole: typedProfile.role,
-          roleType: typeof typedProfile.role
+          full_name: typedProfile.full_name,
+          role: typedProfile.role,
+          avatar_url: typedProfile.avatar_url,
+          email_confirmed_at: typedProfile.email_confirmed_at,
+          created_at: typedProfile.created_at,
+          updated_at: typedProfile.updated_at,
         });
         
         updateAuthState({ 
@@ -289,6 +293,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [updateAuthState]);
 
+  // Check for manual session on startup
+  useEffect(() => {
+    const checkManualSession = async () => {
+      if (typeof window === 'undefined') return;
+      
+      const manualSessionStr = localStorage.getItem('cordis-manual-session');
+      if (!manualSessionStr) return;
+      
+      try {
+        const manualData = JSON.parse(manualSessionStr);
+        console.log('Found manual session in localStorage:', manualData);
+        
+        // Verify the profile still exists
+        const { data: profileCheck, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', manualData.user.id)
+          .single();
+          
+        if (profileError || !profileCheck) {
+          console.warn('Manual session profile no longer exists, clearing session');
+          localStorage.removeItem('cordis-manual-session');
+          return;
+        }
+        
+        // Update the auth state with the manual session
+        updateAuthState({
+          session: manualData.session,
+          user: manualData.user,
+          profile: profileCheck,
+          isAuthenticated: true,
+          isEmailVerified: true,
+          isLoading: false,
+        });
+        
+        console.log('Restored manual session successfully');
+      } catch (error) {
+        console.error('Error restoring manual session:', error);
+        localStorage.removeItem('cordis-manual-session');
+      }
+    };
+    
+    checkManualSession();
+  }, [updateAuthState]);
+
   // Handle auth state changes
   useEffect(() => {
     let mounted = true;
@@ -298,11 +347,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         if (currentSession?.user) {
+          // Auto-confirm email if not already confirmed
+          if (!currentSession.user.email_confirmed_at) {
+            await supabase.auth.updateUser({
+              data: { email_confirmed_at: new Date().toISOString() }
+            });
+            
+            // Refresh the session
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData.session) {
+              currentSession = sessionData.session;
+            }
+          }
+          
           updateAuthState({
             session: currentSession,
             user: currentSession.user,
             isAuthenticated: true,
-            isEmailVerified: !!currentSession.user.email_confirmed_at,
+            isEmailVerified: true, // Always treat email as verified
             isLoading: true,
             error: null,
           });
@@ -381,13 +443,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    // Get initial session
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (mounted) {
-          await handleAuthChange(session);
+        updateAuthState({ isLoading: true });
+        
+        // First check for a manual session (for local development)
+        const { checkAndRestoreManualSession } = await import('@/lib/supabase/auth-helper');
+        const manualSession = checkAndRestoreManualSession();
+        
+        if (manualSession) {
+          console.log('Restoring manual session:', manualSession);
+          
+          if (mounted) {
+            updateAuthState({
+              session: manualSession.session,
+              user: manualSession.user,
+              profile: manualSession.profile,
+              isAuthenticated: true,
+              isEmailVerified: true,
+              isLoading: false,
+            });
+            
+            toast.success('Session restored', {
+              description: `Welcome back, ${manualSession.profile?.full_name || manualSession.user?.email}`,
+            });
+            
+            return; // Skip normal auth flow if we have a manual session
+          }
         }
+        
+        // Get current session from Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        await handleAuthChange(session);
       } catch (error) {
         console.error('Error initializing auth:', error);
         if (mounted) {
@@ -431,9 +519,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return null;
       }
 
+      console.log('Attempting to sign in with:', { email });
+      
       // Attempt to sign in
       const { data, error } = await supabase.auth.signInWithPassword({ 
-        email: email,
+        email: email.trim().toLowerCase(),
         password: password,
       });
       
@@ -446,6 +536,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Handle specific error cases
         if (error.code === 'invalid_credentials' || error.message === 'Invalid login credentials') {
           errorMessage = 'Incorrect email or password. Please try again.';
+          
+          // Check if the user exists but password is wrong
+          const { data: userExists } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('email', email.trim().toLowerCase())
+            .maybeSingle();
+          
+          if (userExists) {
+            console.log('User exists but password is incorrect');
+            errorMessage = 'Incorrect password. Please try again.';
+          } else {
+            console.log('User does not exist with this email');
+            errorMessage = 'No account found with this email. Please check your email or sign up.';
+          }
         }
         
         toast.error('Sign in failed', {
@@ -512,16 +617,76 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       
-      // Register the user with Supabase Auth
+      // First check if user already exists
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email.trim().toLowerCase())
+        .maybeSingle();
+      
+      if (existingUser) {
+        console.log('User already exists with this email:', email.trim().toLowerCase());
+        toast.error('An account with this email already exists');
+        updateAuthState({ 
+          error: new Error('An account with this email already exists'), 
+          isLoading: false 
+        });
+        return { user: null, profile: null };
+      }
+      
+      // Prepare role and normalize it
+      const userRole = userData?.role || 'user';
+      console.log('Creating new user with role:', userRole);
+      
+      // Register the user with Supabase Auth and auto-confirm email
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password: password.trim(),
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
-            email_confirmed_at: new Date().toISOString(), // Auto-confirm email
+            // Include all user data in the metadata
+            email_confirmed_at: new Date().toISOString(),
+            full_name: userData?.full_name || '',
+            role: userRole,
+            // Add any other user data fields here
+            avatar_url: userData?.avatar_url || null
           },
         },
       });
+      
+      console.log('Signup data sent to Supabase:', {
+        email: email.trim().toLowerCase(),
+        role: userRole,
+        full_name: userData?.full_name || '',
+      });
+      
+      // Auto-confirm email in development
+      if (process.env.NODE_ENV === 'development' && data.user) {
+        try {
+          // Update the user's metadata to mark email as confirmed
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: { 
+              email_confirmed_at: new Date().toISOString(),
+              email_verified: true
+            }
+          });
+          
+          if (updateError) {
+            console.warn('Could not update user metadata:', updateError);
+          }
+          
+          // Also update the auth.users table if we have the right permissions
+          try {
+            await supabase.rpc('confirm_user_email', { user_id: data.user.id });
+          } catch (rpcError) {
+            console.warn('Could not confirm user email via RPC:', rpcError);
+          }
+          
+        } catch (error) {
+          console.warn('Could not auto-confirm email:', error);
+        }
+      }
       
       if (error) {
         console.error('Supabase auth error during sign up:', error);
@@ -552,26 +717,58 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       
-      // Create a profile for the new user
-      const username = userData?.username || email.split('@')[0];
-      const newProfile: Partial<Profile> = {
+      // Create a profile for the user
+      const newProfile: Profile = {
         id: data.user.id,
         email: email.trim(),
-        username, // Ensure username is never null
-        full_name: userData?.full_name || username, // Use username as fallback for full name
-        role: userData?.role || 'user',
+        full_name: userData?.full_name || email.split('@')[0] || null,
+        role: userData?.role as UserRole || 'user',
+        avatar_url: userData?.avatar_url || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
       
-      const { data: profileData, error: profileError } = await supabase
+      // First try to update existing profile if it exists
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .insert([newProfile])
-        .select()
+        .select('id')
+        .eq('id', data.user.id)
         .single();
       
+      let profileData;
+      let profileError;
+      
+      if (existingProfile) {
+        // Update existing profile
+        const { data: updatedProfile, error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            email: newProfile.email,
+            full_name: newProfile.full_name,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', data.user.id)
+          .select()
+          .single();
+          
+        profileData = updatedProfile;
+        profileError = updateError;
+      } else {
+        // Create new profile
+        const { data: createdProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert(newProfile)
+          .select()
+          .single();
+          
+        profileData = createdProfile;
+        profileError = createError;
+      }
+      
       if (profileError) {
-        console.error('Error creating user profile:', profileError);
-        // We don't throw here because the user is already created in Auth
-        toast.warning('Account created, but profile setup failed. Some features may be limited.');
+        console.error('Error managing user profile:', profileError);
+        // Don't block the user if profile update fails
+        toast.warning('Account created, but there was an issue with your profile. Some features may be limited.');
       }
       
       // Check if email confirmation is required
@@ -604,36 +801,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error('Sign up error:', error);
       // Most errors are already handled above, but we need to rethrow
-      throw error;
-    } finally {
-      updateAuthState({ isLoading: false });
-    }
-  };
-
-  // Sign out
-  const signOut = async (): Promise<void> => {
-    try {
-      updateAuthState({ isLoading: true });
-      
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error('Error signing out:', error);
-        updateAuthState({ 
-          error: getAuthError(error),
-          isLoading: false 
-        });
-        toast.error('Error signing out. Please try again.');
-        throw error;
-      }
-      
-      // Auth state will be updated by the onAuthStateChange listener
-      toast.success('Signed out successfully');
-      
-      // Redirect to home page
-      router.push('/');
-    } catch (error) {
-      console.error('Unexpected error in signOut:', error);
       updateAuthState({ 
         error: getAuthError(error as Error),
         isLoading: false 
@@ -641,15 +808,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw error;
     }
   };
-
+  
+  // Sign out the user
+  const signOut = async (): Promise<void> => {
+    try {
+      updateAuthState({ isLoading: true });
+      await supabase.auth.signOut();
+      updateAuthState({
+        session: null,
+        user: null,
+        profile: null,
+        isAuthenticated: false,
+        isEmailVerified: false,
+        isLoading: false,
+      });
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      updateAuthState({ 
+        error: getAuthError(error as Error),
+        isLoading: false 
+      });
+    }
+  };
+  
   // Update user profile
   const updateProfile = async (data: Partial<Profile>): Promise<void> => {
     try {
-      if (!authState.user) {
-        throw new Error('You must be logged in to update your profile');
-      }
-      
       updateAuthState({ isLoading: true });
+      
+      if (!authState.user) {
+        throw new Error('User not authenticated');
+      }
       
       const { error } = await supabase
         .from('profiles')
@@ -673,6 +863,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await fetchProfile(authState.user.id);
       
       toast.success('Profile updated successfully');
+      updateAuthState({ isLoading: false });
     } catch (error) {
       console.error('Unexpected error in updateProfile:', error);
       updateAuthState({ 
@@ -682,6 +873,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw error;
     }
   };
+
 
   // Memoize the context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
@@ -705,6 +897,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     authState.isLoading,
     authState.isAuthenticated,
     authState.isEmailVerified,
+    signIn,
+    signUp,
+    signOut,
+    updateProfile,
     resetError,
     refreshSession,
     resendVerificationEmail,

@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/auth-context';
-import { Home, Users, FileText, BarChart, Settings, Folder, Shield } from 'lucide-react';
+import { toast } from 'sonner';
+import { Home, Users, Settings, Shield, LogOut } from 'lucide-react';
 
 interface NavItem {
   name: string;
@@ -15,7 +16,7 @@ interface NavItem {
 }
 
 export function MainNav() {
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
   const pathname = usePathname();
 
   // Define navigation items with role-based visibility
@@ -24,21 +25,6 @@ export function MainNav() {
       name: 'Dashboard',
       href: '/dashboard',
       icon: <Home className="h-5 w-5" />,
-    },
-    {
-      name: 'Projects',
-      href: '/projects',
-      icon: <Folder className="h-5 w-5" />,
-    },
-    {
-      name: 'Reports',
-      href: '/reports',
-      icon: <FileText className="h-5 w-5" />,
-    },
-    {
-      name: 'Analytics',
-      href: '/analytics',
-      icon: <BarChart className="h-5 w-5" />,
     },
     {
       name: 'Team',
@@ -54,18 +40,48 @@ export function MainNav() {
     },
     {
       name: 'Settings',
+      href: '/admin/settings',
+      icon: <Settings className="h-5 w-5" />,
+      roles: ['admin'],
+    },
+    {
+      name: 'User Settings',
       href: '/settings',
       icon: <Settings className="h-5 w-5" />,
+      roles: ['user'],
     },
   ];
 
+  // Debug logging for profile and roles
+  console.log('Current profile:', {
+    profile,
+    role: profile?.role,
+    isAdmin: profile?.role === 'admin'
+  });
+
   // Filter navigation items based on user role
-  const filteredNavItems = navItems.filter(
-    (item) => !item.roles || (profile?.role && item.roles.includes(profile.role.toLowerCase()))
-  );
+  const filteredNavItems = navItems.filter((item) => {
+    const hasAccess = !item.roles || (profile?.role && item.roles.includes(profile.role.toLowerCase()));
+    
+    // Debug logging for each restricted item
+    if (item.roles) {
+      console.log(`Menu item ${item.name}:`, {
+        requiredRoles: item.roles,
+        userRole: profile?.role,
+        hasAccess
+      });
+    }
+    
+    return hasAccess;
+  });
+
+  // Debug logging for settings menu item visibility
+  const userSettings = filteredNavItems.find(item => item.name === 'Settings' && item.roles?.includes('user'));
+  console.log('Settings menu item for user:', userSettings);
 
   return (
-    <nav className="flex flex-col space-y-1">
+    <nav className="flex flex-col h-full">
+      <div className="flex-grow flex flex-col space-y-1">
       {filteredNavItems.map((item) => {
         const isActive = pathname?.startsWith(item.href) && item.href !== '/' || pathname === item.href;
         
@@ -104,6 +120,22 @@ export function MainNav() {
           </Link>
         );
       })}
+      </div>
+      
+      {/* Logout button */}
+      <button
+        onClick={() => {
+          signOut();
+          toast.success('Logged out successfully');
+        }}
+        className="group flex items-center px-4 py-3 mt-4 text-sm font-medium rounded-lg transition-colors
+                   text-red-600 hover:bg-red-50"
+      >
+        <span className="mr-3 text-red-400 group-hover:text-red-600">
+          <LogOut className="h-5 w-5" />
+        </span>
+        Logout
+      </button>
     </nav>
   );
 }

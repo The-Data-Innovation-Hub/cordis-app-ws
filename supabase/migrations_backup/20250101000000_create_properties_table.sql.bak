@@ -1,0 +1,96 @@
+-- Create the properties table
+CREATE TABLE IF NOT EXISTS public.properties (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  address TEXT NOT NULL,
+  city TEXT NOT NULL,
+  state TEXT NOT NULL,
+  zip_code TEXT NOT NULL,
+  property_type TEXT NOT NULL,
+  bedrooms INTEGER NOT NULL,
+  bathrooms DECIMAL(3, 1) NOT NULL,
+  square_feet INTEGER NOT NULL,
+  year_built INTEGER NOT NULL,
+  price DECIMAL(12, 2) NOT NULL,
+  description TEXT,
+  status TEXT NOT NULL CHECK (status IN ('Available', 'Rented', 'Maintenance', 'Sold')),
+  featured BOOLEAN DEFAULT false,
+  images TEXT[] DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  -- Add constraints
+  CONSTRAINT valid_bedrooms CHECK (bedrooms > 0),
+  CONSTRAINT valid_bathrooms CHECK (bathrooms > 0),
+  CONSTRAINT valid_square_feet CHECK (square_feet > 0),
+  CONSTRAINT valid_year_built CHECK (year_built > 1800 AND year_built <= EXTRACT(YEAR FROM NOW()) + 1),
+  CONSTRAINT valid_price CHECK (price >= 0)
+);
+
+-- Enable RLS
+ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for RLS
+CREATE POLICY "Users can view their own properties" 
+  ON public.properties
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own properties"
+  ON public.properties
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own properties"
+  ON public.properties
+  FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own properties"
+  ON public.properties
+  FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Create indexes for better query performance
+CREATE INDEX idx_properties_user_id ON public.properties(user_id);
+CREATE INDEX idx_properties_status ON public.properties(status);
+CREATE INDEX idx_properties_price ON public.properties(price);
+CREATE INDEX idx_properties_bedrooms ON public.properties(bedrooms);
+CREATE INDEX idx_properties_city ON public.properties(city);
+
+-- Create a function to update the updated_at column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create a trigger to update the updated_at column
+CREATE TRIGGER update_properties_updated_at
+BEFORE UPDATE ON public.properties
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- Add comments to the table and columns
+COMMENT ON TABLE public.properties IS 'Stores property information for the Cordis application';
+
+COMMENT ON COLUMN public.properties.id IS 'Unique identifier for the property';
+COMMENT ON COLUMN public.properties.user_id IS 'Reference to the user who owns this property';
+COMMENT ON COLUMN public.properties.address IS 'Street address of the property';
+COMMENT ON COLUMN public.properties.city IS 'City where the property is located';
+COMMENT ON COLUMN public.properties.state IS 'State where the property is located';
+COMMENT ON COLUMN public.properties.zip_code IS 'ZIP code of the property location';
+COMMENT ON COLUMN public.properties.property_type IS 'Type of property (e.g., Single Family, Condo, Townhouse)';
+COMMENT ON COLUMN public.properties.bedrooms IS 'Number of bedrooms in the property';
+COMMENT ON COLUMN public.properties.bathrooms IS 'Number of bathrooms in the property';
+COMMENT ON COLUMN public.properties.square_feet IS 'Total square footage of the property';
+COMMENT ON COLUMN public.properties.year_built IS 'Year the property was built';
+COMMENT ON COLUMN public.properties.price IS 'Asking or rental price of the property';
+COMMENT ON COLUMN public.properties.description IS 'Detailed description of the property';
+COMMENT ON COLUMN public.properties.status IS 'Current status of the property (Available, Rented, Maintenance, Sold)';
+COMMENT ON COLUMN public.properties.featured IS 'Whether the property is featured';
+COMMENT ON COLUMN public.properties.images IS 'Array of image URLs for the property';
+COMMENT ON COLUMN public.properties.created_at IS 'Timestamp when the property was created';
+COMMENT ON COLUMN public.properties.updated_at IS 'Timestamp when the property was last updated';

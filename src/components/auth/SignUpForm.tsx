@@ -18,7 +18,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
-const roles = ['user', 'manager'] as const;
+const roles = ['user', 'manager', 'admin'] as const;
 
 const signUpSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -30,7 +30,6 @@ const signUpSchema = z.object({
       'Password must contain at least one uppercase letter, one lowercase letter, and one number'
     ),
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
-  username: z.string().min(3, 'Username must be at least 3 characters'),
   role: z.enum(roles, { required_error: 'Please select a role' }),
 });
 
@@ -61,7 +60,7 @@ export function SignUpForm() {
         options: {
           data: {
             full_name: data.fullName,
-            username: data.username,
+            role: data.role,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
@@ -75,7 +74,6 @@ export function SignUpForm() {
         .update({
           role: data.role,
           full_name: data.fullName,
-          username: data.username,
         })
         .eq('email', data.email);
 
@@ -100,7 +98,7 @@ export function SignUpForm() {
       toast({
         title: 'Error',
         description: error.message || 'Something went wrong',
-        variant: 'error',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -145,19 +143,7 @@ export function SignUpForm() {
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="username">Username</Label>
-          <Input
-            id="username"
-            type="text"
-            placeholder="johndoe"
-            {...register('username')}
-            className={errors.username ? 'border-red-500' : ''}
-          />
-          {errors.username && (
-            <p className="text-sm text-red-500">{errors.username.message}</p>
-          )}
-        </div>
+
 
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
@@ -176,7 +162,7 @@ export function SignUpForm() {
           <Label htmlFor="role">Role</Label>
           <Select
             onValueChange={(value) => {
-              const roleValue = value as 'user' | 'manager';
+              const roleValue = value as 'user' | 'manager' | 'admin';
               setValue('role', roleValue);
             }}
             defaultValue={getValues('role')}
@@ -190,6 +176,7 @@ export function SignUpForm() {
             <SelectContent>
               <SelectItem value="user">User</SelectItem>
               <SelectItem value="manager">Manager</SelectItem>
+              <SelectItem value="admin">Administrator</SelectItem>
             </SelectContent>
           </Select>
           {errors.role && (

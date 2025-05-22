@@ -1,47 +1,207 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/auth-context';
+
+type UserRole = 'admin' | 'manager' | 'user';
 
 interface SupabaseAuthProps {
   view?: 'sign_in' | 'sign_up';
 }
 
-export function SupabaseAuth({ view = 'sign_in' }: SupabaseAuthProps) {
+export function SupabaseAuth({ view: initialView = 'sign_in' }: SupabaseAuthProps) {
+  const router = useRouter();
   const { signIn, signUp } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  
+  const [view, setView] = useState<'sign_in' | 'sign_up'>(initialView);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState<UserRole>('user');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
       if (view === 'sign_in') {
-        const { error } = await signIn(email, password, rememberMe);
-        if (error) throw error;
-        toast.success('Successfully signed in!');
+        // Handle sign in
+        toast.loading('Signing in...', { id: 'auth-toast' });
+        
+        try {
+          const result = await signIn(email, password);
+          if (!result) throw new Error('Failed to sign in');
+          
+          toast.success('Successfully signed in!', { id: 'auth-toast' });
+          router.push('/router'); // Use the router page to handle role-based redirects
+        } catch (signInError: any) {
+          console.error('Sign in error:', signInError);
+          
+          // Show a more user-friendly error message
+          const errorMessage = signInError?.message || 'Failed to sign in';
+          toast.error('Sign in failed', { 
+            id: 'auth-toast',
+            description: errorMessage
+          });
+          
+          throw signInError;
+        }
       } else {
-        const { error } = await signUp(email, password);
-        if (error) throw error;
-        toast.success('Successfully signed up! Please check your email for verification.');
+        // Handle sign up with full name and role
+        toast.loading('Creating your account...', { id: 'auth-toast' });
+        
+        try {
+          // Validate form data
+          if (!fullName.trim()) {
+            toast.error('Please enter your full name', { id: 'auth-toast' });
+            throw new Error('Full name is required');
+          }
+          
+          if (!email.trim()) {
+            toast.error('Please enter your email', { id: 'auth-toast' });
+            throw new Error('Email is required');
+          }
+          
+          if (password.length < 6) {
+            toast.error('Password too short', { 
+              id: 'auth-toast',
+              description: 'Password must be at least 6 characters long'
+            });
+            throw new Error('Password must be at least 6 characters long');
+          }
+          
+          // We'll let the signUp function handle the duplicate user check
+          // as it already has that logic built in
+          
+          // Attempt to sign up
+          const result = await signUp(email, password, { 
+            full_name: fullName.trim(), 
+            role: role 
+          });
+          
+          if (!result || !result.user) {
+            // Check if we need email verification
+            if (result && result.profile) {
+              toast.success('Account created successfully!', { 
+                id: 'auth-toast',
+                description: 'Please check your email to verify your account.'
+              });
+              
+              // Redirect to sign-in page after successful signup
+              setTimeout(() => {
+                router.push('/sign-in');
+              }, 2000);
+              
+              // Reset form
+              setEmail('');
+              setPassword('');
+              setFullName('');
+              return;
+            } else {
+              throw new Error('Failed to create account');
+            }
+          }
+          
+          toast.success('Account created successfully!', { 
+            id: 'auth-toast',
+            description: 'You can now sign in with your credentials.'
+          });
+          
+          // Redirect to sign-in page after successful signup
+          setTimeout(() => {
+            router.push('/sign-in');
+          }, 2000);
+          
+          // Reset form
+          setEmail('');
+          setPassword('');
+          setFullName('');
+        } catch (signUpError: any) {
+          console.error('Sign up error:', signUpError);
+          
+          // Show a more user-friendly error message
+          let errorMessage = 'Failed to create account';
+          
+          if (signUpError instanceof Error) {
+            errorMessage = signUpError.message;
+          } else if (typeof signUpError === 'object' && signUpError !== null) {
+            if ('message' in signUpError && typeof signUpError.message === 'string') {
+              errorMessage = signUpError.message;
+            } else if ('error' in signUpError && typeof signUpError.error === 'object' && signUpError.error !== null) {
+              if ('message' in signUpError.error && typeof signUpError.error.message === 'string') {
+                errorMessage = signUpError.error.message;
+              }
+            }
+          }
+          
+          toast.error('Sign up failed', { 
+            id: 'auth-toast',
+            description: errorMessage.includes('already exists') ? 
+              'An account with this email already exists. Please sign in instead.' : 
+              errorMessage
+          });
+        }
       }
     } catch (error) {
       console.error('Authentication error:', error);
-      toast.error(error instanceof Error ? error.message : 'Authentication failed');
+      setError(error instanceof Error ? error.message : 'An error occurred during authentication');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-[400px] mx-auto p-6 rounded-xl bg-white dark:bg-gray-800 shadow-[8px_8px_16px_#d9d9d9,-8px_-8px_16px_#ffffff] dark:shadow-[8px_8px_16px_#0f172a,-8px_-8px_16px_#1e293b]">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="w-full max-w-[400px] mx-auto p-6 rounded-xl bg-white shadow-[8px_8px_16px_#d9d9d9,-8px_-8px_16px_#ffffff]">
+      <div className="mb-6 text-center">
+        <h2 className="text-2xl font-bold text-black">
+          {view === 'sign_in' ? 'Sign in to your account' : 'Create a new account'}
+        </h2>
+        <p className="mt-2 text-sm text-gray-600">
+          {view === 'sign_in' ? 'Don\'t have an account? ' : 'Already have an account? '}
+          <button
+            type="button"
+            onClick={() => {
+              setView(view === 'sign_in' ? 'sign_up' : 'sign_in');
+              setError(null);
+            }}
+            className="font-medium text-[#0089AD] hover:text-[#0089AD]/80 transition-colors cursor-pointer"
+          >
+            {view === 'sign_in' ? 'Sign up' : 'Sign in'}
+          </button>
+        </p>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {view === 'sign_up' && (
+          <div>
+            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+              Full Name
+            </label>
+            <input
+              id="fullName"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 shadow-[inset_4px_4px_8px_rgba(0,0,0,0.1)] focus:ring-[#0089AD] focus:border-[#0089AD] transition-shadow"
+              placeholder="John Doe"
+              required
+            />
+          </div>
+        )}
+        
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
             Email
           </label>
           <input
@@ -50,12 +210,13 @@ export function SupabaseAuth({ view = 'sign_in' }: SupabaseAuthProps) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0089AD] focus:border-transparent transition-shadow"
+            className="w-full px-4 py-3 rounded-xl border border-gray-300 shadow-[inset_4px_4px_8px_rgba(0,0,0,0.1)] focus:ring-[#0089AD] focus:border-[#0089AD] transition-shadow"
+            placeholder="your.email@example.com"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
             Password
           </label>
           <input
@@ -64,53 +225,44 @@ export function SupabaseAuth({ view = 'sign_in' }: SupabaseAuthProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-4 py-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0089AD] focus:border-transparent transition-shadow"
+            className="w-full px-4 py-3 rounded-xl border border-gray-300 shadow-[inset_4px_4px_8px_rgba(0,0,0,0.1)] focus:ring-[#0089AD] focus:border-[#0089AD] transition-shadow"
+            placeholder="••••••••"
           />
         </div>
 
-        {view === 'sign_in' && (
-          <div className="flex items-center">
-            <input
-              id="remember-me"
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 text-[#0089AD] focus:ring-[#0089AD] border-gray-300 rounded"
-            />
-            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-              Remember me
+        {view === 'sign_up' && (
+          <div>
+            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+              Role
             </label>
+            <select
+              id="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as UserRole)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 shadow-[inset_4px_4px_8px_rgba(0,0,0,0.1)] focus:ring-[#0089AD] focus:border-[#0089AD] transition-shadow cursor-pointer"
+            >
+              <option value="user">User</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Administrator</option>
+            </select>
           </div>
         )}
 
         <button
           type="submit"
+          className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-[8px_8px_16px_#d9d9d9,-8px_-8px_16px_#ffffff] text-white bg-[#0089AD] hover:bg-[#007a9d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0089AD] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           disabled={isLoading}
-          className="w-full px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 bg-[#0089AD] hover:bg-[#006d8f] text-white disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
-            <span className="flex items-center justify-center">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {view === 'sign_in' ? 'Signing in...' : 'Signing up...'}
-            </span>
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+              {view === 'sign_in' ? 'Signing in...' : 'Creating account...'}
+            </>
           ) : (
-            <>{view === 'sign_in' ? 'Sign In' : 'Sign Up'}</>
+            view === 'sign_in' ? 'Sign in' : 'Create account'
           )}
         </button>
       </form>
-    </div>
-  );
-              password_label: 'Password',
-              button_label: 'Sign Up',
-              loading_button_label: 'Signing up...',
-              link_text: 'Don\'t have an account? Sign up',
-            },
-          },
-        }}
-      />
     </div>
   );
 }
